@@ -22,10 +22,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${font.className} bg-[#0A0B1A] text-white`}>
+      <body className={`${font.className} bg-[#0A0B1A]/20 text-white`}>
         <Web3Provider>
           <div className="flex flex-col min-h-screen">
-            <header className="p-4 flex items-center justify-between gap-4 border-b">
+            <header className="p-4 flex items-center justify-between gap-4 border-b border-b-white/20">
               <Image
                 src={`${process.env.NEXT_PUBLIC_BASE_PATH}/space-computer.svg`}
                 width={30}

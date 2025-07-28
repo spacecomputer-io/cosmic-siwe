@@ -10,6 +10,7 @@ export default function Home() {
   const [signature, setSignature] = useState("");
   const [message, setMessage] = useState<SiweMessage | null>(null);
   const [verificationStatus, setVerificationStatus] = useState("");
+  const [isVerifying, setIsVerifying] = useState(false);
   const { address, chainId, isConnected } = useAccount();
   const { signMessageAsync } = useSignMessage();
 
@@ -27,7 +28,7 @@ export default function Home() {
 
       let nonce = fetchedNonce;
       if (simulateMismatch) {
-        nonce = "mismatched-nonce";
+        nonce = "mismatchednonce";
       }
 
       const message = new SiweMessage({
@@ -46,14 +47,20 @@ export default function Home() {
 
       setSignature(signature);
       setMessage(message);
+
+      // Add a small delay to ensure session is properly established
+      if (simulateMismatch) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
     } catch (error) {
       console.error("Error signing message:", error);
     }
   };
 
   const handleVerify = async () => {
-    if (!message || !signature) return;
+    if (!message || !signature || isVerifying) return;
 
+    setIsVerifying(true);
     setVerificationStatus("Verifying...");
 
     try {
@@ -68,14 +75,16 @@ export default function Home() {
 
       const data = await response.json();
 
-      if (data.ok) {
+      if (response.ok && data.ok) {
         setVerificationStatus("Success!");
       } else {
-        setVerificationStatus(`Failed: ${data.message}`);
+        setVerificationStatus(`Failed: ${data.message || "Unknown error"}`);
       }
     } catch (error) {
       console.error("Error verifying signature:", error);
       setVerificationStatus("Failed to verify signature.");
+    } finally {
+      setIsVerifying(false);
     }
   };
 
@@ -99,7 +108,10 @@ export default function Home() {
             >
               Sign-In with Ethereum
             </Button>
-            <Button onClick={() => handleSign(true)} variant="destructive">
+            <Button
+              onClick={() => handleSign(true)}
+              className="bg-red-500 text-white hover:bg-red-600"
+            >
               Simulate Mismatch
             </Button>
           </div>
@@ -109,8 +121,12 @@ export default function Home() {
           <div className="p-4 rounded-md w-full text-center glass-card">
             <p className="font-bold">Signature</p>
             <p className="text-sm break-words">{signature}</p>
-            <Button onClick={handleVerify} className="mt-4">
-              Verify Signature
+            <Button
+              onClick={handleVerify}
+              className="mt-4 bg-[#FCD501] text-black hover:bg-yellow-400"
+              disabled={isVerifying}
+            >
+              {isVerifying ? "Verifying..." : "Verify Signature"}
             </Button>
           </div>
         )}
