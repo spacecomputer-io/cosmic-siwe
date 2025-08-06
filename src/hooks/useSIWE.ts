@@ -87,6 +87,46 @@ export function useSIWE() {
     }
   }, [isConnected, address, chainId, state, signMessageAsync]);
 
+  const signMessageWithCustomNonce = useCallback(
+    async (customNonce: string) => {
+      if (!isConnected || !address || !chainId) {
+        throw new Error("Missing required data for signing");
+      }
+
+      try {
+        setState((prev) => ({ ...prev, isLoading: true }));
+
+        const message = new SiweMessage({
+          domain: window.location.host,
+          address,
+          statement:
+            "Sign in with Ethereum using cosmic randomness for enhanced security.",
+          uri: window.location.origin,
+          version: "1",
+          chainId,
+          nonce: customNonce,
+        });
+
+        const preparedMessage = message.prepareMessage();
+        const signature = await signMessageAsync({ message: preparedMessage });
+
+        setState((prev) => ({
+          ...prev,
+          message,
+          signature,
+          isLoading: false,
+        }));
+
+        return { message: preparedMessage, signature };
+      } catch (error) {
+        setState((prev) => ({ ...prev, isLoading: false }));
+        console.error("Error signing message:", error);
+        throw error;
+      }
+    },
+    [isConnected, address, chainId, signMessageAsync]
+  );
+
   const verifySignature = useCallback(async () => {
     if (!state.message || !state.signature) {
       throw new Error("No message or signature to verify");
@@ -156,6 +196,7 @@ export function useSIWE() {
     ...state,
     fetchNonce,
     signMessage,
+    signMessageWithCustomNonce,
     verifySignature,
     reset,
     isConnected,

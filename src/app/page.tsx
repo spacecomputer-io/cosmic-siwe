@@ -25,6 +25,7 @@ interface Step {
 export default function Home() {
   const [steps, setSteps] = useState<Step[]>([]);
   const [shouldSignAfterNonce, setShouldSignAfterNonce] = useState(false);
+  const [simulateMismatch, setSimulateMismatch] = useState(false);
 
   const {
     nonce,
@@ -34,6 +35,7 @@ export default function Home() {
     usedFallback,
     fetchNonce,
     signMessage,
+    signMessageWithCustomNonce,
     verifySignature,
     reset,
     isConnected,
@@ -92,6 +94,7 @@ export default function Home() {
     // Reset state
     reset();
     setShouldSignAfterNonce(false);
+    setSimulateMismatch(simulateMismatch);
 
     // Initialize steps
     initializeSteps(simulateMismatch);
@@ -151,7 +154,12 @@ export default function Home() {
         // Step 2: Sign Message
         updateStepStatus("sign-message", "loading");
 
-        await signMessage();
+        // Use mismatched nonce if simulating mismatch
+        if (simulateMismatch) {
+          await signMessageWithCustomNonce("mismatchednonce");
+        } else {
+          await signMessage();
+        }
 
         updateStepStatus("sign-message", "completed");
       } catch (error) {
@@ -164,7 +172,14 @@ export default function Home() {
       setShouldSignAfterNonce(false);
       handleSignAfterNonce();
     }
-  }, [shouldSignAfterNonce, nonce, usedFallback, signMessage]);
+  }, [
+    shouldSignAfterNonce,
+    nonce,
+    usedFallback,
+    signMessage,
+    signMessageWithCustomNonce,
+    simulateMismatch,
+  ]);
 
   const getStepIcon = (step: Step) => {
     switch (step.status) {
@@ -327,10 +342,11 @@ export default function Home() {
               <div className="text-center p-6 bg-green-50/20 border border-green-200/30 rounded-lg">
                 <Check className="h-12 w-12 text-green-500 mx-auto mb-4" />
                 <h3 className="text-xl font-bold text-green-300 mb-2">
-                  Authentication Complete!
+                  Demo Complete!
                 </h3>
                 <p className="text-gray-200 mb-4">
-                  You have successfully signed in with Ethereum.
+                  You have successfully experienced SIWE with cTRNG. Want to try
+                  another flow?
                 </p>
                 <Button
                   onClick={() => {
