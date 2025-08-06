@@ -188,24 +188,24 @@ export default function Home() {
       case "completed":
         return <Check className="h-5 w-5 text-green-500" />;
       case "loading":
-        return <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />;
+        return <Loader2 className="h-5 w-5 text-blue-300 animate-spin" />;
       case "error":
         return <X className="h-5 w-5 text-red-500" />;
       default:
-        return <div className="text-gray-400">{step.icon}</div>;
+        return <div className="text-gray-100">{step.icon}</div>;
     }
   };
 
   const getStepStatusColor = (step: Step) => {
     switch (step.status) {
       case "completed":
-        return "text-green-600";
+        return "text-green-300";
       case "loading":
-        return "text-blue-600";
+        return "text-blue-300";
       case "error":
-        return "text-red-600";
+        return "text-red-300";
       default:
-        return "text-gray-500";
+        return "text-gray-100";
     }
   };
 
@@ -251,7 +251,7 @@ export default function Home() {
               <h2 className="text-2xl font-bold mb-2">
                 Sign-In with Ethereum Process
               </h2>
-              <p className="text-gray-600">
+              <p className="text-gray-200">
                 Follow the steps below to authenticate with your wallet
               </p>
             </div>
@@ -283,13 +283,13 @@ export default function Home() {
                     <h3 className={`font-semibold ${getStepStatusColor(step)}`}>
                       {step.title}
                     </h3>
-                    <p className="text-sm text-gray-600 mt-1">
+                    <p className="text-sm text-gray-200 mt-1">
                       {step.description}
                     </p>
                   </div>
                   {step.status === "loading" && (
                     <div className="flex-shrink-0">
-                      <div className="animate-pulse text-blue-500 text-xs">
+                      <div className="animate-pulse text-blue-300 text-xs">
                         Processing...
                       </div>
                     </div>
@@ -303,10 +303,10 @@ export default function Home() {
                 (s) => s.id === "sign-message" && s.status === "completed"
               ) && (
                 <div className="p-4 rounded-md w-full text-center glass-card border border-green-200/30">
-                  <p className="font-bold text-green-600">
+                  <p className="font-bold text-green-300">
                     ✓ Signature Generated
                   </p>
-                  <p className="text-sm break-words mt-2 bg-gray-50/50 p-2 rounded">
+                  <p className="text-sm text-gray-200 break-words mt-2 bg-gray-50/50 p-2 rounded">
                     {signature}
                   </p>
                   <Button
@@ -331,7 +331,7 @@ export default function Home() {
                 <p
                   className={`text-sm ${
                     verificationStatus.includes("Success")
-                      ? "text-green-600"
+                      ? "text-green-300"
                       : "text-red-600"
                   }`}
                 >
@@ -343,10 +343,10 @@ export default function Home() {
             {steps.every((step) => step.status === "completed") && (
               <div className="text-center p-6 bg-green-50/20 border border-green-200/30 rounded-lg">
                 <Check className="h-12 w-12 text-green-500 mx-auto mb-4" />
-                <h3 className="text-xl font-bold text-green-600 mb-2">
+                <h3 className="text-xl font-bold text-green-300 mb-2">
                   Authentication Complete!
                 </h3>
-                <p className="text-gray-600 mb-4">
+                <p className="text-gray-200 mb-4">
                   You have successfully signed in with Ethereum.
                 </p>
                 <Button

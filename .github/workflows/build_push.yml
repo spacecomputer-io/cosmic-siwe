@@ -1,4 +1,4 @@
-name: Build and Push Cipher Docker Image
+name: Build and Push SIWE Docker Image
 
 on:
   push:
@@ -23,7 +23,7 @@ jobs:
 
       - name: Set image name
         run: |
-          echo "IMAGE=${REGISTRY}/${NAMESPACE}/cipher" >> $GITHUB_ENV
+          echo "IMAGE=${REGISTRY}/${NAMESPACE}/siwe" >> $GITHUB_ENV
 
       - name: Log in to the Container registry
         uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
