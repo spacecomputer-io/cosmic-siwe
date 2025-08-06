@@ -27,7 +27,7 @@ export default function RootLayout({
           <div className="flex flex-col min-h-screen">
             <header className="p-4 flex items-center justify-between gap-4 border-b border-b-white/20">
               <Image
-                src={`${process.env.NEXT_PUBLIC_BASE_PATH}/space-computer.svg`}
+                src={`/space-computer.svg`}
                 width={30}
                 height={30}
                 alt="logo"
