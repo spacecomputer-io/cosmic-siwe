@@ -1,8 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import { useAccount, useSignMessage } from "wagmi";
-import { SiweMessage } from "siwe";
+import { useEffect, useState } from "react";
 import { ConnectKitButton } from "connectkit";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,6 +12,7 @@ import {
   MessageSquare,
   Verified,
 } from "lucide-react";
+import { useSIWE } from "@/hooks/useSIWE";
 
 interface Step {
   id: string;
@@ -24,14 +23,23 @@ interface Step {
 }
 
 export default function Home() {
-  const [signature, setSignature] = useState("");
-  const [message, setMessage] = useState<SiweMessage | null>(null);
-  const [verificationStatus, setVerificationStatus] = useState("");
-  const [isVerifying, setIsVerifying] = useState(false);
   const [steps, setSteps] = useState<Step[]>([]);
-  const [currentStepIndex, setCurrentStepIndex] = useState(0);
-  const { address, chainId, isConnected } = useAccount();
-  const { signMessageAsync } = useSignMessage();
+  const [shouldSignAfterNonce, setShouldSignAfterNonce] = useState(false);
+
+  const {
+    nonce,
+    signature,
+    verificationStatus,
+    isLoading,
+    usedFallback,
+    fetchNonce,
+    signMessage,
+    verifySignature,
+    reset,
+    isConnected,
+    address,
+    chainId,
+  } = useSIWE();
 
   const initializeSteps = (simulateMismatch: boolean) => {
     const baseSteps: Step[] = [
@@ -45,7 +53,9 @@ export default function Home() {
       {
         id: "generate-nonce",
         title: "Generate Nonce",
-        description: "Backend generates a unique nonce for security",
+        description: usedFallback
+          ? "Using fallback nonce (cosmic service unavailable)"
+          : "Backend generates a cosmic nonce for security",
         status: "pending",
         icon: <Shield className="h-5 w-5" />,
       },
@@ -68,7 +78,6 @@ export default function Home() {
     ];
 
     setSteps(baseSteps);
-    setCurrentStepIndex(0);
   };
 
   const updateStepStatus = (stepId: string, status: Step["status"]) => {
@@ -77,111 +86,85 @@ export default function Home() {
     );
   };
 
-  const moveToNextStep = () => {
-    setCurrentStepIndex((prev) => Math.min(prev + 1, steps.length - 1));
-  };
-
   const handleSign = async (simulateMismatch = false) => {
     if (!isConnected || !address || !chainId) return;
 
     // Reset state
-    setVerificationStatus("");
-    setSignature("");
-    setMessage(null);
-    setIsVerifying(false);
+    reset();
+    setShouldSignAfterNonce(false);
 
     // Initialize steps
     initializeSteps(simulateMismatch);
 
     // Mark connect step as completed
     updateStepStatus("connect", "completed");
-    moveToNextStep();
 
     try {
       // Step 1: Generate Nonce
       updateStepStatus("generate-nonce", "loading");
-      moveToNextStep();
 
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_PATH}/api/nonce`
-      );
-      const { nonce: fetchedNonce } = await response.json();
+      await fetchNonce();
 
-      let nonce = fetchedNonce;
-      if (simulateMismatch) {
-        nonce = "mismatchednonce";
-      }
-
-      updateStepStatus("generate-nonce", "completed");
-      moveToNextStep();
-
-      // Step 2: Sign Message
-      updateStepStatus("sign-message", "loading");
-      moveToNextStep();
-
-      const message = new SiweMessage({
-        domain: window.location.host,
-        address,
-        statement: "Sign in with Ethereum to the app.",
-        uri: window.location.origin,
-        version: "1",
-        chainId,
-        nonce,
-      });
-
-      const signature = await signMessageAsync({
-        message: message.prepareMessage(),
-      });
-
-      setSignature(signature);
-      setMessage(message);
-      updateStepStatus("sign-message", "completed");
-      moveToNextStep();
-
-      // Add a small delay to ensure session is properly established
-      if (simulateMismatch) {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      }
+      // Set flag to trigger signing after nonce is fetched
+      setShouldSignAfterNonce(true);
     } catch (error) {
-      console.error("Error signing message:", error);
-      updateStepStatus("sign-message", "error");
+      console.error("Error fetching nonce:", error);
+      updateStepStatus("generate-nonce", "error");
     }
   };
 
   const handleVerify = async () => {
-    if (!message || !signature || isVerifying) return;
+    if (isLoading) return;
 
-    setIsVerifying(true);
-    setVerificationStatus("Verifying...");
     updateStepStatus("verify-signature", "loading");
 
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_PATH}/api/verify`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message, signature }),
-        }
-      );
-
-      const data = await response.json();
-
-      if (response.ok && data.ok) {
-        setVerificationStatus("Success!");
-        updateStepStatus("verify-signature", "completed");
-      } else {
-        setVerificationStatus(`Failed: ${data.message || "Unknown error"}`);
-        updateStepStatus("verify-signature", "error");
-      }
+      await verifySignature();
+      updateStepStatus("verify-signature", "completed");
     } catch (error) {
       console.error("Error verifying signature:", error);
-      setVerificationStatus("Failed to verify signature.");
       updateStepStatus("verify-signature", "error");
-    } finally {
-      setIsVerifying(false);
     }
   };
+
+  useEffect(() => {
+    const handleSignAfterNonce = async () => {
+      if (!nonce) return;
+
+      try {
+        // Update step description if fallback was used
+        if (usedFallback) {
+          setSteps((prev) =>
+            prev.map((step) =>
+              step.id === "generate-nonce"
+                ? {
+                    ...step,
+                    description:
+                      "Using fallback nonce (cosmic service unavailable)",
+                  }
+                : step
+            )
+          );
+        }
+        updateStepStatus("generate-nonce", "completed");
+
+        // Step 2: Sign Message
+        updateStepStatus("sign-message", "loading");
+
+        await signMessage();
+
+        updateStepStatus("sign-message", "completed");
+      } catch (error) {
+        console.error("Error signing message:", error);
+        updateStepStatus("sign-message", "error");
+      }
+    };
+
+    if (shouldSignAfterNonce && nonce) {
+      setShouldSignAfterNonce(false);
+      handleSignAfterNonce();
+    }
+  }, [shouldSignAfterNonce, nonce, usedFallback, signMessage]);
 
   const getStepIcon = (step: Step) => {
     switch (step.status) {
@@ -265,7 +248,7 @@ export default function Home() {
             </div>
 
             <div className="space-y-4">
-              {steps.map((step, index) => (
+              {steps.map((step) => (
                 <div
                   key={step.id}
                   className={`flex items-center space-x-4 p-4 rounded-lg transition-all duration-300 ${
@@ -312,9 +295,9 @@ export default function Home() {
                   <Button
                     onClick={handleVerify}
                     className="mt-4 bg-[#FCD501] text-black hover:bg-yellow-400"
-                    disabled={isVerifying}
+                    disabled={isLoading}
                   >
-                    {isVerifying ? "Verifying..." : "Verify Signature"}
+                    {isLoading ? "Verifying..." : "Verify Signature"}
                   </Button>
                 </div>
               )}
@@ -352,10 +335,7 @@ export default function Home() {
                 <Button
                   onClick={() => {
                     setSteps([]);
-                    setCurrentStepIndex(0);
-                    setSignature("");
-                    setMessage(null);
-                    setVerificationStatus("");
+                    reset();
                   }}
                   className="bg-[#FCD501] text-black hover:bg-yellow-400"
                 >
